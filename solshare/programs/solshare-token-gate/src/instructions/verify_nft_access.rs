@@ -70,10 +70,18 @@ pub fn handler(ctx: Context<VerifyNftAccess>) -> Result<()> {
 
     verification.user = ctx.accounts.user.key();
     verification.post = access_control.post;
-    verification.verified = true;
+    verification.nft_verified = true;
     verification.verified_at = clock.unix_timestamp;
     verification.expires_at = None;
     verification.bump = ctx.bumps.verification;
+
+    // For GateType::Both, only set verified=true if both token AND NFT are verified
+    // For GateType::Nft, NFT verification alone is sufficient
+    verification.verified = match access_control.gate_type {
+        crate::state::GateType::Nft => true,
+        crate::state::GateType::Both => verification.token_verified && verification.nft_verified,
+        crate::state::GateType::Token => verification.token_verified, // Should not reach here due to requires_nft check
+    };
 
     emit!(AccessVerified {
         user: verification.user,

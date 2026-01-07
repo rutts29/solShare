@@ -26,6 +26,8 @@ pub struct AccessVerification {
     pub user: Pubkey,
     pub post: Pubkey,
     pub verified: bool,
+    pub token_verified: bool,  // Tracks token verification separately
+    pub nft_verified: bool,    // Tracks NFT verification separately
     pub verified_at: i64,
     pub expires_at: Option<i64>,
     pub bump: u8,

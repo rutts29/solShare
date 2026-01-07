@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::state::{AccessControl, AccessVerification};
+use crate::state::{AccessControl, AccessVerification, GateType};
 use crate::error::TokenGateError;
 
 #[derive(Accounts)]
@@ -21,10 +21,24 @@ pub struct CheckAccess<'info> {
 }
 
 pub fn handler(ctx: Context<CheckAccess>) -> Result<bool> {
+    let access_control = &ctx.accounts.access_control;
     let verification = &ctx.accounts.verification;
     let clock = Clock::get()?;
 
-    require!(verification.verified, TokenGateError::NotVerified);
+    // Explicitly verify based on gate type for defense in depth
+    // This ensures GateType::Both requires BOTH verifications, not just one
+    match access_control.gate_type {
+        GateType::Token => {
+            require!(verification.token_verified, TokenGateError::NotVerified);
+        }
+        GateType::Nft => {
+            require!(verification.nft_verified, TokenGateError::NotVerified);
+        }
+        GateType::Both => {
+            require!(verification.token_verified, TokenGateError::NotVerified);
+            require!(verification.nft_verified, TokenGateError::NotVerified);
+        }
+    }
 
     // Check expiration if set
     if let Some(expires_at) = verification.expires_at {
